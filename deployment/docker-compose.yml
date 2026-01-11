@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  whatsapp-bot:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: whatsapp-bot
+    ports:
+      - "8000:8000"
+    environment:
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
+      - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID}
+      - WEBHOOK_VERIFY_TOKEN=${WEBHOOK_VERIFY_TOKEN}
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-whatsapp_bot}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - whatsapp-network
+    volumes:
+      - app-logs:/app/logs
+
+  mongodb:
+    image: mongo:7.0
+    container_name: whatsapp-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-whatsapp_bot}
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+    networks:
+      - whatsapp-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  whatsapp-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  app-logs:
